@@ -1,5 +1,6 @@
-package co.edu.eia.metagenomics.stringsearch
+package kmers
 
+import co.edu.eia.metagenomics.kmers.KmerCount
 import org.scalatest.FunSpec
 
 import scala.collection.mutable
