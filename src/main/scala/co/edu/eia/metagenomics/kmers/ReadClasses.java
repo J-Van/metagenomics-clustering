@@ -6,7 +6,7 @@ import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
 
-public class LeerClases {
+public class ReadClasses {
 
     private ArrayList <String> id;
     private ArrayList <String> cat;
@@ -20,7 +20,7 @@ public class LeerClases {
     private ArrayList <String> phylumDif;
     private ArrayList <String> specieDif;
 
-    public LeerClases() {
+    public ReadClasses() {
         super();
         this.id = new ArrayList<String>();
         this.cat = new ArrayList<String>();

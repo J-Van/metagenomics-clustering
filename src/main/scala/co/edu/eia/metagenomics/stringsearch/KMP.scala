@@ -16,13 +16,13 @@ object KMP {
     var count = 0
     var m = 0
     var i = 0
-    val PartialMatchTable: Array[Int] = createTable(pattern)
+    val partialMatchTable: Array[Int] = createTable(pattern)
     while (m + i < text.length) {
       if (pattern.charAt(i) == text.charAt(m + i)) {
         count += (if (i == pattern.length - 1) 1 else 0)
         i += 1
       } else {
-        val start = if (PartialMatchTable(i) > -1) PartialMatchTable(i) else 0
+        val start = if (partialMatchTable(i) > -1) partialMatchTable(i) else 0
         m = m + i - start
         i = start
       }

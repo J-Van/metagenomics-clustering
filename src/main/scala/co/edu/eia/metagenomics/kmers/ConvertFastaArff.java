@@ -398,7 +398,7 @@ public class ConvertFastaArff {
      */
     public void crearPrincipal(String nameFile, String fileClases,int tipoClase, Boolean f_gc, Boolean f_nucl, Boolean f_cod, Boolean f_k, int k) throws IOException{
         //Primero leer las clases para agregarlas al final
-        LeerClases c= new LeerClases();
+        ReadClasses c= new ReadClasses();
         classes=c.leer(fileClases, tipoClase);
         cat=c.getCat();
         phylum=c.getPhylum();

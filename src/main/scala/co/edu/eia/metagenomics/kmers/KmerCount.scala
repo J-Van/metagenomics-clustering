@@ -19,4 +19,15 @@ object KmerCount {
     }
     result
   }
+
+  /** Returns a HashMap with the counts for each kmer normalized with the total of kmers in the text, being
+    * the sum of all values in the Map.
+    *
+    * @param map    HashMap with the raw counts of each kmer
+    * @param total  Total of kmers in the text
+    * @return       HashMap with the values normalized based on the total
+    */
+  def normalizeKmers(map: mutable.HashMap[String, Int], total: Int): mutable.HashMap[String, Double] = {
+    for ((k, v) <- map) yield (k, BigDecimal(v/total).setScale(3, BigDecimal.RoundingMode.HALF_UP).toDouble)
+  }
 }

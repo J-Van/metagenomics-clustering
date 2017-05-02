@@ -23,9 +23,15 @@ class KMPTest extends FunSpec {
       }
     }
 
-    it("should return [-1, 0, 0, 1, 0, 1, 2, 3, 2] for the pattern ABACABABC") {
+    it("should return [-1, 0, 0, 1, 0, 1, 2, 3, 2] for the pattern AGACAGAGC") {
       assertResult(Array(-1, 0, 0, 1, 0, 1, 2, 3, 2)) {
         KMP.createTable("agacagagc")
+      }
+    }
+
+    it("should return [-1, 0, 1, 2, 0, 1, 2, 3, 3, 3] for the pattern AAABAAAAAB") {
+      assertResult(Array(-1, 0, 1, 2, 0, 1, 2, 3, 3, 3)) {
+        KMP.createTable("aaabaaaaab")
       }
     }
   }
