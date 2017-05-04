@@ -36,6 +36,30 @@ class KMPTest extends FunSpec {
     }
   }
 
-  describe("testCount") (pending)
+  describe("Count the patterns") {
+    it("should return 6 for the pattern A in AAAAAA") {
+      assertResult(6) {
+        KMP.count("a", "aaaaaa")
+      }
+    }
+
+    it("should return 3 for the pattern AAAA in AAAAAA") {
+      assertResult(3) {
+        KMP.count("aaaa", "aaaaaa")
+      }
+    }
+
+    it("should return 2 for the pattern ABA in ABCABABCABAB") {
+      assertResult(2) {
+        KMP.count("aba", "abcababcabab")
+      }
+    }
+
+    it("should return 4 for the pattern AGCA in AGATCAGCAGCATAGCATGAGCA") {
+      assertResult(4) {
+        KMP.count("agca", "agatcagcagcatagcatgagca")
+      }
+    }
+  }
 
 }

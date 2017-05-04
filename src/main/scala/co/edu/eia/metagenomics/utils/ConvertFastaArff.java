@@ -1,4 +1,4 @@
-package co.edu.eia.metagenomics.kmers;
+package co.edu.eia.metagenomics.utils;
 
 import java.io.BufferedReader;
 import java.io.BufferedWriter;

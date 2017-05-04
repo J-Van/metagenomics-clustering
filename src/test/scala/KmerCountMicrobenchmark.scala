@@ -1,13 +1,13 @@
 import co.edu.eia.metagenomics.kmers.KmerCount
-import org.scalameter.api._
+import org.scalameter.api.{Bench, Gen}
 
 import scala.util.Random
 
 object KmerCountMicrobenchmark extends Bench.LocalTime {
-  val sizes: Gen[Int] = Gen.range("size")(50000, 250000, 50000)
+  val alphabet = "ACGT"
   val sequences: Gen[String] = for {
-    size <- sizes
-  } yield (1 to size).map(x => "ACGT"(Random.nextInt.abs % 4)).mkString
+    size <- Gen.range("size")(50000, 250000, 50000)
+  } yield (1 to size).map(_ => alphabet(Random.nextInt.abs % alphabet.length)).mkString
 
   performance of "KmerCount" in {
     measure method "apply" in {
