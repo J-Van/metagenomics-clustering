@@ -20,8 +20,8 @@ object KmerCount {
     result
   }
 
-  /** Returns a HashMap with the counts for each kmer normalized with the total of kmers in the text, being
-    * the sum of all values in the Map.
+  /** Returns a HashMap with the counts for each kmer normalized with the total of kmers in the text, with the total
+    * being the sum of all the values in the Map.
     *
     * @param map    HashMap with the raw counts of each kmer
     * @param total  Total of kmers in the text
