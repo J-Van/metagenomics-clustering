@@ -13,6 +13,7 @@ libraryDependencies += "org.apache.spark" %% "spark-mllib" % "2.1.0"
 libraryDependencies += "org.scalanlp" %% "breeze-natives" % "0.13"
 libraryDependencies += "de.lmu.ifi.dbs.elki" % "elki" % "0.7.1"
 libraryDependencies += "com.storm-enroute" %% "scalameter" % "0.8.2"
+libraryDependencies += "com.github.scopt" %% "scopt" % "3.6.0"
 
 testFrameworks += new TestFramework("org.scalameter.ScalaMeterFramework")
 
