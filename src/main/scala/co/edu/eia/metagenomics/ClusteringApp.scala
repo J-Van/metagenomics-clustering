@@ -2,7 +2,8 @@ package co.edu.eia.metagenomics
 
 import java.io.File
 
-import org.apache.spark.mllib.clustering.KMeans
+import co.edu.eia.metagenomics.distance.SquaredEuclideanDistance
+import org.apache.spark.mllib.clustering.{GaussianMixture, KMeans}
 import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.{SparkConf, SparkContext}
 import scopt.OptionParser
@@ -30,13 +31,13 @@ object ClusteringApp {
           if (x > 1) success
           else failure("runs must be >1"))
         .text("Number of runs the clustering algorithm will be executed. Default is 3")
-      opt[Int]('k', "clusters").optional()
+      opt[Int]('k', "clust").optional()
         .action((x, c) => c.copy(numIterations = x))
         .validate( x =>
           if (x > 1) success
           else failure("Number of clusters must be >1"))
         .text("Number of clusters. Default is 3")
-      opt[Int]('n', "iterations").optional()
+      opt[Int]('n', "iter").optional()
         .action((x, c) => c.copy(numClusters = x))
         .validate( x =>
           if (x > 1) success
@@ -51,25 +52,28 @@ object ClusteringApp {
     parser.parse(args, Config()) match {
       case Some(config) =>
         val conf = new SparkConf().setAppName("KMeansMetagenomics")
+        conf.setIfMissing("spark.master", "local")
         val sc = new SparkContext(conf)
 
         val data = sc.textFile(config.input)
         val parsedData = data.map(s => Vectors.dense(s.split(',').map(_.toDouble))).cache()
 
-        val numClusters = config.numClusters
-        val numIterations = config.numIterations
-        val clusters = new KMeans().setK(numClusters)
-          .setMaxIterations(numIterations)
-          .setEpsilon(1e-2)
-          .setInitializationMode("kmeans||")
-          .setSeed(10)
-          .run(parsedData)
-
-        val WSSSE = clusters.computeCost(parsedData)
-        val centers = clusters.clusterCenters.deep.mkString(" ")
-        println(s"Within Set Sum of Squared Errors = $WSSSE")
-        println(s"Centers = $centers")
-        //clusters.save(sc, "target/co/edu/eia/metagenomics/KMeansExample/KMeansModel")
+        for ( i <- 1 to config.runs ) {
+          val numClusters = config.numClusters
+          val numIterations = config.numIterations
+          val clusters = new KMeans().setK(numClusters)
+            .setMaxIterations(numIterations)
+            .setEpsilon(1e-2)
+            .setInitializationMode("kmeans||")
+            .setSeed(10)
+            .run(parsedData)
+          val centers = clusters.clusterCenters
+          val pointsWithCenterAndDistance = parsedData.map { point =>
+            for ( center <- centers ) {
+              val distance = ???
+            }
+          }
+        }
         sc.stop()
       case None =>
         // arguments are bad, usage will be displayed
