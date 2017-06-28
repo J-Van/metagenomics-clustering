@@ -1,7 +1,7 @@
 package co.edu.eia.metagenomics
 
 import co.edu.eia.metagenomics.utils.PointWithCategory
-import org.apache.spark.mllib.clustering.{GaussianMixture, KMeans}
+import org.apache.spark.mllib.clustering.{GaussianMixture, GaussianMixtureModel, KMeans, KMeansModel}
 import org.apache.spark.mllib.linalg.{Vector, Vectors}
 import org.apache.spark.{SparkConf, SparkContext}
 import scopt.OptionParser
@@ -67,43 +67,41 @@ object ClusteringApp {
 
         val data = sc.textFile(config.input)
         val parsedData = if (config.classes)
-          data.map(s => PointWithCategory(s)._1).cache()
+          data.filter(s => !s.startsWith("@")).map(s => PointWithCategory(s)).cache()
         else
-          data.map(s => Vectors.dense(s.split(',').map(_.toDouble))).cache()
+          data.filter(s => !s.startsWith("@")).map(s => Vectors.dense(s.split(',').map(_.toDouble)) -> None[String]).cache()
 
-        for ( i <- 1 to config.runs ) {
+        for (i <- 1 to config.runs) {
           val numClusters = config.numClusters
           val numIterations = config.numIterations
-          val clusters = if (config.algorithm == "kmeans") {
-            new KMeans().setK(numClusters)
+          val pointsWithCenterAndDistance = if (config.algorithm == "kmeans") {
+            val clusters = new KMeans().setK(numClusters)
               .setMaxIterations(numIterations)
               .setEpsilon(1e-2)
               .setInitializationMode("kmeans||")
               .setSeed(10)
-              .run(parsedData)
-          } else {
-            new GaussianMixture().setK(numClusters)
+              .run(parsedData.map(_._1))
+            for {
+              point <- parsedData.map(_._1)
+              centers = clusters.clusterCenters
+              center = centers(clusters.predict(point))
+              distance = Vectors.sqdist(point, center)
+            } yield point -> (center, distance)
+          } else if (config.algorithm == "gaussiam") {
+            val clusters = new GaussianMixture().setK(numClusters)
               .setMaxIterations(numIterations)
-              .run(parsedData)
+              .run(parsedData.map(_._1))
+            for {
+              point <- parsedData.map(_._1)
+              centers = clusters.gaussians.map(_.mu)
+              center = centers(clusters.predict(point))
+              distance = Vectors.sqdist(point, center)
+            } yield point -> (center, distance)
           }
-          //TODO GaussianMixture doesn't return centers
-          val centers = clusters.clusterCenters
-          val pointsWithCenterAndDistance = parsedData.map ( point => {
-            var shortestDistance = Double.MaxValue
-            var closestCenter = centers(0)
-            for ( center <- centers ) {
-              val distance = Vectors.sqdist(point, center)
-              if (distance < shortestDistance) {
-                shortestDistance = distance
-                closestCenter = center
-              }
-            }
-            point -> (closestCenter, shortestDistance)
-          })
         }
         sc.stop()
       case None =>
-        // arguments are bad, usage will be displayed
+      // arguments are bad, usage will be displayed
     }
 
   }
