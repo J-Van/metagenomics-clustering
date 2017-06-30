@@ -1,6 +1,7 @@
 package co.edu.eia.metagenomics
 
 import co.edu.eia.metagenomics.utils.PointWithCategory
+import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation
 import org.apache.spark.mllib.clustering.{GaussianMixture, GaussianMixtureModel, KMeans, KMeansModel}
 import org.apache.spark.mllib.linalg.{Vector, Vectors}
 import org.apache.spark.{SparkConf, SparkContext}
@@ -71,6 +72,8 @@ object ClusteringApp {
         else
           data.filter(s => !s.startsWith("@")).map(s => Vectors.dense(s.split(',').map(_.toDouble)) -> None[String]).cache()
 
+        var centers: Array[Vector] = Array(Vectors.zeros(1))
+
         for (i <- 1 to config.runs) {
           val numClusters = config.numClusters
           val numIterations = config.numIterations
@@ -81,23 +84,30 @@ object ClusteringApp {
               .setInitializationMode("kmeans||")
               .setSeed(10)
               .run(parsedData.map(_._1))
+            centers = clusters.clusterCenters
             for {
               point <- parsedData.map(_._1)
-              centers = clusters.clusterCenters
               center = centers(clusters.predict(point))
               distance = Vectors.sqdist(point, center)
             } yield point -> (center, distance)
-          } else if (config.algorithm == "gaussiam") {
+          } else {
             val clusters = new GaussianMixture().setK(numClusters)
               .setMaxIterations(numIterations)
               .run(parsedData.map(_._1))
+            centers = clusters.gaussians.map(_.mu)
             for {
               point <- parsedData.map(_._1)
-              centers = clusters.gaussians.map(_.mu)
               center = centers(clusters.predict(point))
               distance = Vectors.sqdist(point, center)
             } yield point -> (center, distance)
           }
+          val distances = for {
+            i <- 0 until centers.length - 1
+            j <- i+1 until centers.length
+          } yield Vectors.sqdist(centers(i), centers(j))
+          val averageDistanceCenters = distances.sum/distances.length
+          val standardDeviation = Math.sqrt(distances.map(distance => Math.pow(Math.abs(distance - averageDistanceCenters), 2)).sum/distances.length)
+          val margin = averageDistanceCenters + standardDeviation
         }
         sc.stop()
       case None =>
