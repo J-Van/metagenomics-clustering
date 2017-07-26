@@ -10,6 +10,7 @@ import scopt.OptionParser
 case class Config(input: String = null,
                   output: String = null,
                   algorithm: String = "kmeans",
+                  iterative: Boolean = false,
                   runs: Int = 3,
                   numClusters: Int = 3,
                   numIterations: Int = 200,
@@ -32,6 +33,9 @@ object ClusteringApp {
           if (x == "kmeans" | x == "gaussian") success
           else failure("Algorithm must be either 'kmeans' or 'gaussian'"))
         .text("Algorithm that will be used for the clustering. Options are 'kmeans' and 'gaussian'. Default is kmeans")
+      opt[Unit]('i', "iterative").optional()
+        .action((_, c) => c.copy(iterative = true))
+        .text("Flag specifying if the next iteration should use the results of the previous one (Iterative Clustering)")
       opt[Int]('r', "runs").optional()
         .action((x, c) => c.copy(runs = x))
         .validate( x =>
@@ -44,7 +48,7 @@ object ClusteringApp {
           if (x > 1) success
           else failure("Number of clusters must be >1"))
         .text("Number of clusters. Default is 3")
-      opt[Int]('n', "iter").optional()
+      opt[Int]('n', "maxiter").optional()
         .action((x, c) => c.copy(numClusters = x))
         .validate( x =>
           if (x > 1) success
@@ -74,9 +78,10 @@ object ClusteringApp {
 
         var centers: Array[Vector] = Array(Vectors.zeros(1))
 
+        val numClusters = config.numClusters
+        val numIterations = config.numIterations
+
         for (i <- 1 to config.runs) {
-          val numClusters = config.numClusters
-          val numIterations = config.numIterations
           val pointsWithCenterAndDistance = if (config.algorithm == "kmeans") {
             val clusters = new KMeans().setK(numClusters)
               .setMaxIterations(numIterations)
