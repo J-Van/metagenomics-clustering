@@ -1,9 +1,9 @@
 package co.edu.eia.metagenomics
 
 import co.edu.eia.metagenomics.utils.PointWithCategory
-import org.apache.commons.math3.stat.descriptive.moment.StandardDeviation
-import org.apache.spark.mllib.clustering.{GaussianMixture, GaussianMixtureModel, KMeans, KMeansModel}
+import org.apache.spark.mllib.clustering.{GaussianMixture, KMeans}
 import org.apache.spark.mllib.linalg.{Vector, Vectors}
+import org.apache.spark.rdd.RDD
 import org.apache.spark.{SparkConf, SparkContext}
 import scopt.OptionParser
 
@@ -11,6 +11,7 @@ case class Config(input: String = null,
                   output: String = null,
                   algorithm: String = "kmeans",
                   iterative: Boolean = false,
+                  fraction: Double = 0.75,
                   runs: Int = 3,
                   numClusters: Int = 3,
                   numIterations: Int = 200,
@@ -36,6 +37,9 @@ object ClusteringApp {
       opt[Unit]('i', "iterative").optional()
         .action((_, c) => c.copy(iterative = true))
         .text("Flag specifying if the next iteration should use the results of the previous one (Iterative Clustering)")
+      opt[Double]('f', "fraction").optional()
+        .action((x, c) => c.copy(fraction = x))
+        .text("Optional fraction of the sample to take in non-iterative clustering. Default is 0.75")
       opt[Int]('r', "runs").optional()
         .action((x, c) => c.copy(runs = x))
         .validate( x =>
@@ -81,43 +85,59 @@ object ClusteringApp {
         val numClusters = config.numClusters
         val numIterations = config.numIterations
 
-        for (i <- 1 to config.runs) {
-          val pointsWithCenterAndDistance = if (config.algorithm == "kmeans") {
-            val clusters = new KMeans().setK(numClusters)
-              .setMaxIterations(numIterations)
-              .setEpsilon(1e-2)
-              .setInitializationMode("kmeans||")
-              .setSeed(10)
-              .run(parsedData.map(_._1))
-            centers = clusters.clusterCenters
-            for {
-              point <- parsedData.map(_._1)
-              center = centers(clusters.predict(point))
-              distance = Vectors.sqdist(point, center)
-            } yield point -> (center, distance)
-          } else {
-            val clusters = new GaussianMixture().setK(numClusters)
-              .setMaxIterations(numIterations)
-              .run(parsedData.map(_._1))
-            centers = clusters.gaussians.map(_.mu)
-            for {
-              point <- parsedData.map(_._1)
-              center = centers(clusters.predict(point))
-              distance = Vectors.sqdist(point, center)
-            } yield point -> (center, distance)
+        val output = if (!config.iterative) {
+          val models = (1 to config.runs).map(_ =>
+              new GaussianMixture().setK(numClusters)
+                .setMaxIterations(numIterations)
+                .run(parsedData.map(_._1).sample(withReplacement = false, fraction = 0.75)))
+          val result = parsedData.map(pointAndCenter =>
+            (pointAndCenter._1, models.map(_.predict(pointAndCenter._1)), pointAndCenter._2))
+          result
+        } else {
+          for (i <- 1 to config.runs) {
+            val pointsWithCenterAndDistance = if (config.algorithm == "kmeans") {
+              val clusters = new KMeans().setK(numClusters)
+                .setMaxIterations(numIterations)
+                .setEpsilon(1e-2)
+                .setInitializationMode("kmeans||")
+                .setSeed(10)
+                .run(parsedData.map(_._1))
+              centers = clusters.clusterCenters
+              for {
+                point <- parsedData.map(_._1)
+                center = centers(clusters.predict(point))
+                distance = Vectors.sqdist(point, center)
+              } yield point -> (center, distance)
+            } else {
+              val clusters = new GaussianMixture().setK(numClusters)
+                .setMaxIterations(numIterations)
+                .run(parsedData.map(_._1))
+              centers = clusters.gaussians.map(_.mu)
+              for {
+                point <- parsedData.map(_._1)
+                center = centers(clusters.predict(point))
+                distance = Vectors.sqdist(point, center)
+              } yield point -> (center, distance)
+            }
+            val distances = for {
+              i <- 0 until centers.length - 1
+              j <- i+1 until centers.length
+            } yield Vectors.sqdist(centers(i), centers(j))
+            val averageDistanceCenters = distances.sum/distances.length
+            val standardDeviation = Math.sqrt(distances.map(distance => Math.pow(Math.abs(distance - averageDistanceCenters), 2)).sum/distances.length)
+            val margin = averageDistanceCenters + standardDeviation
+            "a"
           }
-          val distances = for {
-            i <- 0 until centers.length - 1
-            j <- i+1 until centers.length
-          } yield Vectors.sqdist(centers(i), centers(j))
-          val averageDistanceCenters = distances.sum/distances.length
-          val standardDeviation = Math.sqrt(distances.map(distance => Math.pow(Math.abs(distance - averageDistanceCenters), 2)).sum/distances.length)
-          val margin = averageDistanceCenters + standardDeviation
         }
+        output.asInstanceOf[RDD].saveAsTextFile(config.output)
         sc.stop()
       case None =>
       // arguments are bad, usage will be displayed
     }
+  }
 
+  def generateBalancedSample(data: RDD[(Vector, Option[String])], fraction: Double): RDD[Vector] = {
+    //val sample = data.groupBy(_._2.getOrElse("")).zip(RandomRDDs.randomRDD())
+    ???
   }
 }
